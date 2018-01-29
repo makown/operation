@@ -1,0 +1,154 @@
+version: '3'
+services:
+  dubbo:
+    image: registry.cn-shenzhen.aliyuncs.com/whb/dubbo
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    ports:
+      - '8090:8090'
+  zoo1:
+    image: registry.cn-shenzhen.aliyuncs.com/epipe/zookeeper
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    hostname: zoo1
+    ports:
+      - 2181:2181
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=zoo2:2888:3888 server.3=zoo3:2888:3888
+    volumes:
+      - zoo1_data:/data
+      - zoo1_log:/datalog
+  zoo2:
+    image: registry.cn-shenzhen.aliyuncs.com/epipe/zookeeper
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    hostname: zoo2
+    ports:
+      - 2182:2181
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=zoo2:2888:3888 server.3=zoo3:2888:3888
+    volumes:
+      - zoo2_data:/data
+      - zoo2_log:/datalog
+  zoo3:
+    image: registry.cn-shenzhen.aliyuncs.com/epipe/zookeeper
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    hostname: zoo3
+    ports:
+      - 2183:2181
+    environment:
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=zoo1:2888:3888 server.2=zoo2:2888:3888 server.3=zoo3:2888:3888
+    volumes:
+      - zoo3_data:/data
+      - zoo3_log:/datalog
+
+  master:
+    image: registry.cn-shenzhen.aliyuncs.com/epipe/redis
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    command: redis-server --requirepass epipe2017
+    ports:
+      - '7311:6379'
+    networks:
+      default:
+        aliases:
+          - redis-master
+    volumes:
+      - master:/data
+  slave:
+    image: registry.cn-shenzhen.aliyuncs.com/epipe/redis
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    command: redis-server --slaveof redis_master 6379 --masterauth  epipe2017  --requirepass epipe2017
+    ports:
+      - '7312:6379'
+    volumes:
+      - slave:/data
+
+  sentinel:
+    image: registry.cn-shenzhen.aliyuncs.com/epipe/sentinel
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
+    ports:
+      - '26379:26379'
+    environment:
+      - AUTH_PASS=epipe2017
+      - SENTINEL_QUORUM =1
+      - SENTINEL_DOWN_AFTER=5000
+      - SENTINEL_FAILOVER=18000
+
+
+networks:
+  default:
+    external:
+      name: basic
+
+volumes:
+  zoo1_data:
+  zoo2_data:
+  zoo3_data:
+  zoo1_log:
+  zoo2_log:
+  zoo3_log:
+  master:
+  slave:
