@@ -5,3 +5,6 @@ docker images |grep -v swarm |awk '{print $3}' |xargs docker rmi -f
 
 ---docker  images 需要账号密码部署----------
 docker stack deploy -c 11.yaml 11 --with-registry-auth
+------node 加标签-----
+docker node update --label-add datacenter=east docker2
+
